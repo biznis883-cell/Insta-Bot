@@ -112,26 +112,21 @@ A `Dockerfile` is included. Both platforms can build it directly:
 - **Render:** *New → Web Service* → connect this repo → Environment: **Docker** → deploy.
 - **Railway:** *New Project → Deploy from GitHub* → it detects the `Dockerfile` → deploy.
 
-The bot works out of the box: `config.json` already points at the shared
-ig-chat-api-server. The only thing you must supply is **your own cookies**.
+For a Railway deployment, the bot needs a separately deployed
+`ig-chat-api-server`. Add its connection settings under **Insta-Bot → Variables**
+before deploying:
 
 | Variable | Required | Meaning |
 | --- | --- | --- |
-| `IG_API_SERVER` | — | Only to use a *different* server than the shared one in `config.json` |
-| `IG_API_TOKEN` | — | The token for that server (must equal its `IG_TOKEN`) |
-| `IG_ADMIN_BOT` | — | Comma-separated account id(s) allowed to run admin commands |
+| `IG_API_SERVER` | Yes | The public HTTPS URL of your deployed `ig-chat-api-server` |
+| `IG_API_TOKEN` | Yes | The server's `IG_TOKEN` value |
+| `IG_COOKIES` | If needed | Instagram cookies, only if the API server does not already store them |
+| `IG_ADMIN_BOT` | No | Comma-separated account IDs allowed to run admin commands |
 
-> **One shared server, many accounts.** The `server.url` and `server.token` in
-> `config.json` are the **same for every bot** — they are global, not per-user.
-> One ig-chat-api-server instance hosts many Instagram accounts at once, and each
-> bot is identified by the **account id (`ds_user_id`) inside its own cookies**,
-> which it pushes to the server. The server reports that id back and the bot
-> adopts it. So the token is a shared access key, not a personal secret, and no
-> bot ever drives another account.
->
-> `IG_API_SERVER` / `IG_API_TOKEN` override the values in `config.json`; set them
-> only if you run a *separate* server (your own deployment) rather than the
-> shared one.
+The bot does not include the private `ig-chat-api` package and does not need it
+for deployment. If either server variable is missing, it now prints one clear
+error and exits instead of retrying forever. Keep tokens and cookies in Railway
+Variables; do not commit them to `config.json` or GitHub.
 
 > **Per-session secret (automatic).** The shared token authenticates you to the
 > server, but it must not let one bot act as another. When your bot pushes its
@@ -162,9 +157,9 @@ sends its own Instagram cookies to that server, so you can keep cookies in
 `account.txt` (or an `IG_COOKIES` env var) **on the bot** — no need to configure
 them on the server too.
 
-### Mode A — Remote server (recommended, deployed)
+### Mode A — Remote server (required for deployment)
 
-Set both values (or the environment fallbacks) and the bot is ready:
+Set both values in Railway Variables (or in the environment when running locally):
 
 ```json
 "server": {

@@ -122,6 +122,21 @@ function loadConfig() {
 	return config;
 }
 
+function getDeploymentConfigError(config, env = process.env) {
+	const isDeployment = env.NODE_ENV === "production"
+		|| Boolean(env.RAILWAY_ENVIRONMENT)
+		|| Boolean(env.RAILWAY_PROJECT_ID);
+	if (!isDeployment) return null;
+
+	const server = config && config.server ? config.server : {};
+	const missing = [];
+	if (!String(server.url || "").trim()) missing.push("IG_API_SERVER");
+	if (!String(server.token || "").trim()) missing.push("IG_API_TOKEN");
+	if (missing.length === 0) return null;
+
+	return `Missing required deployment variable${missing.length > 1 ? "s" : ""}: ${missing.join(" and ")}. Set ${missing.join(" and ")} in Railway → Variables, then redeploy. The direct ig-chat-api package is private and is not available from npm.`;
+}
+
 function saveConfig(config) {
 	fs.writeFileSync(configPathFor(), JSON.stringify(config, null, "\t") + "\n");
 }
@@ -226,6 +241,7 @@ module.exports = {
 	get configPath() { return configPathFor(); },
 	get accountPath() { return accountPathFor(); },
 	loadConfig,
+	getDeploymentConfigError,
 	saveConfig,
 	loadAccount,
 	normalizeCookies,

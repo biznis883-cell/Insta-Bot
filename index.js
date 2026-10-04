@@ -14,7 +14,7 @@
  */
 
 const log = require("./src/logger");
-const { loadConfig } = require("./src/config");
+const { loadConfig, getDeploymentConfigError } = require("./src/config");
 const { createBot } = require("./src/bot");
 const { createStatusServer } = require("./src/statusServer");
 
@@ -45,6 +45,13 @@ async function main() {
 	catch (error) {
 		log.error("CONFIG", error.message);
 		process.exit(1);
+	}
+
+	const deploymentConfigError = getDeploymentConfigError(config);
+	if (deploymentConfigError) {
+		log.error("CONFIG", deploymentConfigError);
+		process.exitCode = 1;
+		return;
 	}
 
 	const bot = createBot(config);
@@ -86,6 +93,12 @@ async function main() {
 		await bot.start();
 	}
 	catch (error) {
+		if (error && error.code === "ERR_BOT_CONFIG") {
+			log.error("CONFIG", error.message);
+			await statusServer.stop();
+			process.exitCode = 1;
+			return;
+		}
 		// start() already retries; this is only a last-resort guard. Keep the
 		// process alive so the host does not fail the deploy and a later fix is
 		// picked up without a redeploy.

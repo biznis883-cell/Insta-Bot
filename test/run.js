@@ -218,17 +218,25 @@ async function main() {
 		}
 	});
 
-	await test("config: ships the shared server and no personal admin id", () => {
-		// Model A: one shared server. url + token are global and intentionally
-		// committed, so a fork works out of the box. What must NOT be committed
-		// is a personal admin id — that is per-deployment.
-		//
-		// Read config.json directly (not loadConfig, which points at the test's
-		// scratch copy) so this asserts what is actually committed to the repo.
+await test("config: accepts deployment credentials from environment", () => {
+	const { getDeploymentConfigError } = require(path.join(root, "src/config"));
 		const committed = JSON.parse(fs.readFileSync(path.join(root, "config.json"), "utf8"));
-		assert.match(committed.server.url, /^https?:\/\//, "config.json must ship the shared server url");
-		assert.ok(committed.server.token.length > 0, "config.json must ship the shared server token");
-		assert.deepStrictEqual(committed.adminBot, [], "config.json must not ship a personal admin id");
+	assert.ok(committed.server && typeof committed.server === "object");
+	assert.strictEqual(
+		getDeploymentConfigError(committed, { NODE_ENV: "production" }) !== null,
+		!committed.server.url || !committed.server.token,
+		"production config validation must match whether server credentials are present"
+	);
+	assert.match(
+		getDeploymentConfigError({ server: {} }, { RAILWAY_ENVIRONMENT: "production" }),
+		/IG_API_SERVER and IG_API_TOKEN/,
+		"Railway should report the exact missing variables"
+	);
+	assert.strictEqual(
+		getDeploymentConfigError({ server: {} }, { NODE_ENV: "development" }),
+		null,
+		"local development may still use direct mode"
+	);
 	});
 
 	await test("config: IG_ADMIN_BOT sets per-deployment admins", () => {

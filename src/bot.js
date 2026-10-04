@@ -38,15 +38,21 @@ function loadServerCookies() {
 function resolveLogin(config) {
 	const server = config.server || {};
 	if (server.url && server.token) return { login: serverLogin, mode: "server" };
+if (Boolean(server.url) !== Boolean(server.token)) {
+const error = new Error("Both IG_API_SERVER and IG_API_TOKEN are required for remote server mode.");
+error.code = "ERR_BOT_CONFIG";
+throw error;
+}
 	try {
 		return { login: require("ig-chat-api"), mode: "direct" };
 	}
-	catch (error) {
-		throw new Error(
-			"No server configured and the direct 'ig-chat-api' package is not installed.\n" +
-			"Recommended: set server.url + server.token in config.json (or IG_API_SERVER / IG_API_TOKEN).\n" +
-			"Mode B (development): install ig-chat-api into node_modules and place cookies in account.txt."
-		);
+catch (_) {
+const error = new Error(
+"Remote server configuration is missing. Set both IG_API_SERVER and IG_API_TOKEN.\n" +
+"Direct mode is for local development only and requires the private ig-chat-api package, which is not available from npm."
+);
+error.code = "ERR_BOT_CONFIG";
+throw error;
 	}
 }
 
@@ -334,6 +340,7 @@ function createBot(config) {
 				break;
 			}
 			catch (error) {
+if (error && error.code === "ERR_BOT_CONFIG") throw error;
 				attempt++;
 				const message = String(error && (error.error || error.message) || error);
 				const delay = Math.min(60000, 5000 * attempt);
